@@ -1,0 +1,932 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>Meu Kanban</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      color-scheme: light dark;
+      --page: #f5f7fb;
+      --surface: #ffffff;
+      --column: #edf1f7;
+      --text: #192334;
+      --muted: #68758a;
+      --border: #dce3ed;
+      --accent: #545ce8;
+      --accent-hover: #4149d2;
+      --danger: #c83d4b;
+      --danger-hover: #a92c39;
+      --todo: #ee9b36;
+      --doing: #537ce8;
+      --done: #35a878;
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 22px;
+      --shadow-card: 0 3px 12px rgb(26 39 61 / 7%);
+      --shadow-dialog: 0 24px 80px rgb(12 22 40 / 25%);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: #111722;
+        --surface: #1b2533;
+        --column: #18212e;
+        --text: #edf2fb;
+        --muted: #a1aec1;
+        --border: #303c4d;
+        --accent: #9298ff;
+        --accent-hover: #aeb2ff;
+        --danger: #ff8992;
+        --danger-hover: #ffadb4;
+        --todo: #f3ad50;
+        --doing: #88a6ff;
+        --done: #60d3a0;
+        --shadow-card: 0 3px 14px rgb(0 0 0 / 18%);
+        --shadow-dialog: 0 24px 80px rgb(0 0 0 / 48%);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      background: var(--page);
+      color: var(--text);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .app {
+      width: min(1200px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 56px 0 64px;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 36px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      font-family: "Bricolage Grotesque", "Inter", sans-serif;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      letter-spacing: -0.045em;
+      line-height: 1.05;
+    }
+
+    .subtitle {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.6;
+    }
+
+    .primary-button {
+      display: inline-flex;
+      min-height: 46px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background 160ms ease, transform 160ms ease;
+    }
+
+    .primary-button:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .add-icon {
+      font-size: 1.25rem;
+      font-weight: 400;
+      line-height: 1;
+    }
+
+    .storage-notice {
+      margin: -16px 0 22px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: start;
+      gap: 20px;
+    }
+
+    .kanban-column {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--column);
+      transition: box-shadow 160ms ease, border-color 160ms ease;
+    }
+
+    .kanban-column[data-status="todo"] {
+      border-top: 4px solid var(--todo);
+    }
+
+    .kanban-column[data-status="doing"] {
+      border-top: 4px solid var(--doing);
+    }
+
+    .kanban-column[data-status="done"] {
+      border-top: 4px solid var(--done);
+    }
+
+    .kanban-column.is-drag-over {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+    }
+
+    .column-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px 18px 14px;
+    }
+
+    .column-heading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+    }
+
+    .column-dot {
+      width: 9px;
+      height: 9px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+    }
+
+    [data-status="todo"] .column-dot {
+      background: var(--todo);
+    }
+
+    [data-status="doing"] .column-dot {
+      background: var(--doing);
+    }
+
+    [data-status="done"] .column-dot {
+      background: var(--done);
+    }
+
+    .task-count {
+      display: inline-flex;
+      min-width: 26px;
+      height: 26px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 7px;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .task-list {
+      display: grid;
+      min-height: 76px;
+      gap: 12px;
+      padding: 0 12px 12px;
+    }
+
+    .empty-state {
+      margin: 0;
+      padding: 12px 8px 18px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      text-align: center;
+    }
+
+    .empty-state[hidden] {
+      display: none;
+    }
+
+    .task-card {
+      padding: 15px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      box-shadow: var(--shadow-card);
+      cursor: grab;
+      overflow-wrap: anywhere;
+      transition: opacity 140ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+
+    .task-card:hover {
+      box-shadow: 0 6px 18px rgb(26 39 61 / 11%);
+      transform: translateY(-1px);
+    }
+
+    .task-card.is-dragging {
+      opacity: 0.45;
+      cursor: grabbing;
+    }
+
+    .task-card:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .task-title {
+      margin: 0 0 7px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+
+    .task-description {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.83rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .task-description:empty {
+      display: none;
+    }
+
+    .task-actions {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding-top: 11px;
+      border-top: 1px solid var(--border);
+    }
+
+    .task-actions button {
+      display: inline-flex;
+      min-width: 32px;
+      height: 32px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 9px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.83rem;
+      transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+    }
+
+    .task-actions button:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .task-actions button:disabled {
+      cursor: not-allowed;
+      opacity: 0.4;
+    }
+
+    .task-actions .delete-button {
+      margin-left: auto;
+      border-color: transparent;
+      color: var(--danger);
+    }
+
+    .task-actions .delete-button:hover {
+      border-color: transparent;
+      background: color-mix(in srgb, var(--danger) 11%, transparent);
+      color: var(--danger-hover);
+    }
+
+    dialog {
+      width: min(440px, calc(100% - 32px));
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-dialog);
+    }
+
+    dialog::backdrop {
+      background: rgb(13 20 33 / 55%);
+      backdrop-filter: blur(3px);
+    }
+
+    .dialog-content {
+      padding: 26px;
+    }
+
+    .dialog-content h2 {
+      margin-bottom: 7px;
+      font-size: 1.45rem;
+      letter-spacing: -0.03em;
+    }
+
+    .dialog-help {
+      margin-bottom: 22px;
+      color: var(--muted);
+      font-size: 0.87rem;
+      line-height: 1.5;
+    }
+
+    .form-field {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 17px;
+    }
+
+    .form-field label {
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+
+    .form-field input,
+    .form-field textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--page);
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+
+    .form-field textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-field input::placeholder,
+    .form-field textarea::placeholder {
+      color: var(--muted);
+      opacity: 0.75;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .secondary-button {
+      min-height: 42px;
+      padding: 0 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .secondary-button:hover {
+      background: var(--column);
+    }
+
+    .dialog-actions .primary-button {
+      min-height: 42px;
+    }
+
+    @media (max-width: 859px) {
+      .board {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .task-list {
+        min-height: 64px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .app {
+        width: min(100% - 32px, 520px);
+        padding: 34px 0 40px;
+      }
+
+      .page-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 18px;
+        margin-bottom: 26px;
+      }
+
+      .primary-button {
+        width: 100%;
+      }
+
+      .column-header {
+        padding: 17px 15px 12px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Organize seu trabalho</p>
+        <h1>Meu Kanban</h1>
+        <p class="subtitle">Acompanhe suas tarefas, uma etapa de cada vez.</p>
+      </div>
+      <button class="primary-button" id="add-task-button" type="button" aria-label="Adicionar nova tarefa">
+        <span class="add-icon" aria-hidden="true">+</span>
+        Adicionar nova tarefa
+      </button>
+    </header>
+
+    <p class="storage-notice" id="storage-notice" role="status" hidden>
+      O armazenamento local está indisponível. Suas alterações não serão salvas após fechar a página.
+    </p>
+
+    <section class="board" id="board" aria-label="Quadro de tarefas">
+      <section class="kanban-column" data-status="todo" aria-labelledby="heading-todo">
+        <header class="column-header">
+          <h2 class="column-heading" id="heading-todo">
+            <span class="column-dot" aria-hidden="true"></span>
+            A Fazer
+          </h2>
+          <span class="task-count" data-count="todo" aria-label="0 tarefas">0</span>
+        </header>
+        <div class="task-list" data-list="todo"></div>
+        <p class="empty-state" data-empty="todo">Nenhuma tarefa por aqui.</p>
+      </section>
+
+      <section class="kanban-column" data-status="doing" aria-labelledby="heading-doing">
+        <header class="column-header">
+          <h2 class="column-heading" id="heading-doing">
+            <span class="column-dot" aria-hidden="true"></span>
+            Em Andamento
+          </h2>
+          <span class="task-count" data-count="doing" aria-label="0 tarefas">0</span>
+        </header>
+        <div class="task-list" data-list="doing"></div>
+        <p class="empty-state" data-empty="doing">Nenhuma tarefa por aqui.</p>
+      </section>
+
+      <section class="kanban-column" data-status="done" aria-labelledby="heading-done">
+        <header class="column-header">
+          <h2 class="column-heading" id="heading-done">
+            <span class="column-dot" aria-hidden="true"></span>
+            Concluído
+          </h2>
+          <span class="task-count" data-count="done" aria-label="0 tarefas">0</span>
+        </header>
+        <div class="task-list" data-list="done"></div>
+        <p class="empty-state" data-empty="done">Nenhuma tarefa por aqui.</p>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="task-dialog" aria-labelledby="dialog-title">
+    <form class="dialog-content" id="task-form">
+      <h2 id="dialog-title">Nova tarefa</h2>
+      <p class="dialog-help">Adicione uma tarefa para acompanhar no seu quadro.</p>
+
+      <div class="form-field">
+        <label for="task-title-input">Título <span aria-hidden="true">*</span></label>
+        <input
+          id="task-title-input"
+          name="title"
+          type="text"
+          maxlength="120"
+          placeholder="Ex.: Preparar apresentação"
+          autocomplete="off"
+          required
+        >
+      </div>
+
+      <div class="form-field">
+        <label for="task-description-input">Descrição <span>(opcional)</span></label>
+        <textarea
+          id="task-description-input"
+          name="description"
+          maxlength="1000"
+          placeholder="Inclua mais detalhes, se quiser."
+        ></textarea>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="secondary-button" id="cancel-button" type="button" aria-label="Cancelar criação da tarefa">
+          Cancelar
+        </button>
+        <button class="primary-button" type="submit" aria-label="Salvar nova tarefa">
+          Adicionar tarefa
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // Estado e persistência
+      const STORAGE_KEY = "meu-kanban-tarefas-v1";
+      const statuses = ["todo", "doing", "done"];
+      const examples = [
+        {
+          id: "exemplo-1",
+          title: "Planejar a semana",
+          description: "Definir prioridades e organizar as próximas entregas.",
+          status: "todo"
+        },
+        {
+          id: "exemplo-2",
+          title: "Revisar referências do projeto",
+          description: "Separar materiais e anotações importantes.",
+          status: "doing"
+        }
+      ];
+
+      let tasks = [];
+      let draggedTaskId = null;
+      let dropCommitted = false;
+      let storageAvailable = true;
+
+      const board = document.querySelector("#board");
+      const dialog = document.querySelector("#task-dialog");
+      const form = document.querySelector("#task-form");
+      const titleInput = document.querySelector("#task-title-input");
+      const descriptionInput = document.querySelector("#task-description-input");
+      const storageNotice = document.querySelector("#storage-notice");
+
+      function isValidTask(task) {
+        return task !== null
+          && typeof task === "object"
+          && typeof task.id === "string"
+          && task.id.length > 0
+          && typeof task.title === "string"
+          && typeof task.description === "string"
+          && statuses.includes(task.status);
+      }
+
+      function loadTasks() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+
+          if (saved === null) {
+            tasks = examples.map((task) => ({ ...task }));
+            return;
+          }
+
+          const parsed = JSON.parse(saved);
+          if (!Array.isArray(parsed) || !parsed.every(isValidTask)) {
+            throw new Error("Os dados salvos não têm o formato esperado.");
+          }
+
+          const ids = new Set(parsed.map((task) => task.id));
+          if (ids.size !== parsed.length) {
+            throw new Error("Foram encontrados identificadores duplicados.");
+          }
+
+          tasks = parsed;
+        } catch (error) {
+          tasks = examples.map((task) => ({ ...task }));
+          storageAvailable = false;
+          storageNotice.hidden = false;
+          console.warn("Não foi possível carregar as tarefas salvas.", error);
+        }
+      }
+
+      function saveTasks() {
+        try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        storageAvailable = true;
+        storageNotice.hidden = true;
+        } catch (error) {
+        storageAvailable = false;
+          storageNotice.hidden = false;
+          console.warn("Não foi possível salvar as tarefas.", error);
+        }
+      }
+
+      // Renderização
+      function createTaskCard(task) {
+        const card = document.createElement("article");
+        card.className = "task-card";
+        card.draggable = true;
+        card.tabIndex = 0;
+        card.dataset.taskId = task.id;
+        card.setAttribute("aria-label", `Tarefa: ${task.title}. Arraste para mover entre colunas.`);
+
+        const title = document.createElement("h3");
+        title.className = "task-title";
+        title.textContent = task.title;
+
+        const description = document.createElement("p");
+        description.className = "task-description";
+        description.textContent = task.description;
+
+        const actions = document.createElement("div");
+        actions.className = "task-actions";
+
+        const statusIndex = statuses.indexOf(task.status);
+        const previousButton = document.createElement("button");
+        previousButton.type = "button";
+        previousButton.className = "move-button";
+        previousButton.dataset.action = "previous";
+        previousButton.textContent = "←";
+        previousButton.disabled = statusIndex === 0;
+        previousButton.setAttribute("aria-label", `Mover "${task.title}" para a coluna anterior`);
+        previousButton.title = "Mover para a coluna anterior";
+
+        const nextButton = document.createElement("button");
+        nextButton.type = "button";
+        nextButton.className = "move-button";
+        nextButton.dataset.action = "next";
+        nextButton.textContent = "→";
+        nextButton.disabled = statusIndex === statuses.length - 1;
+        nextButton.setAttribute("aria-label", `Mover "${task.title}" para a próxima coluna`);
+        nextButton.title = "Mover para a próxima coluna";
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "delete-button";
+        deleteButton.dataset.action = "delete";
+        deleteButton.textContent = "Excluir";
+        deleteButton.setAttribute("aria-label", `Excluir a tarefa "${task.title}"`);
+
+        actions.append(previousButton, nextButton, deleteButton);
+        card.append(title, description, actions);
+        return card;
+      }
+
+      function render() {
+        for (const status of statuses) {
+          const list = board.querySelector(`[data-list="${status}"]`);
+          const columnTasks = tasks.filter((task) => task.status === status);
+          const fragment = document.createDocumentFragment();
+
+          for (const task of columnTasks) {
+            fragment.append(createTaskCard(task));
+          }
+
+          list.replaceChildren(fragment);
+
+          const count = board.querySelector(`[data-count="${status}"]`);
+          count.textContent = String(columnTasks.length);
+          count.setAttribute(
+            "aria-label",
+            `${columnTasks.length} ${columnTasks.length === 1 ? "tarefa" : "tarefas"}`
+          );
+
+          board.querySelector(`[data-empty="${status}"]`).hidden = columnTasks.length > 0;
+        }
+      }
+
+      // Ações
+      function createTask(title, description) {
+        const id = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `tarefa-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+        tasks.unshift({
+          id,
+          title,
+          description,
+          status: "todo"
+        });
+
+        saveTasks();
+        render();
+      }
+
+      function moveTask(taskId, direction) {
+        const task = tasks.find((item) => item.id === taskId);
+        if (!task) return;
+
+        const currentIndex = statuses.indexOf(task.status);
+        const nextIndex = currentIndex + direction;
+
+        if (nextIndex < 0 || nextIndex >= statuses.length) return;
+
+        task.status = statuses[nextIndex];
+        saveTasks();
+        render();
+      }
+
+      function deleteTask(taskId) {
+        tasks = tasks.filter((task) => task.id !== taskId);
+        saveTasks();
+        render();
+      }
+
+      board.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+
+        const card = button.closest(".task-card");
+        if (!card) return;
+
+        const { taskId } = card.dataset;
+
+        if (button.dataset.action === "previous") {
+          moveTask(taskId, -1);
+        } else if (button.dataset.action === "next") {
+          moveTask(taskId, 1);
+        } else if (button.dataset.action === "delete") {
+          deleteTask(taskId);
+        }
+      });
+
+      // Arrastar e soltar
+      board.addEventListener("dragstart", (event) => {
+        const card = event.target.closest(".task-card");
+        if (!card) return;
+
+        draggedTaskId = card.dataset.taskId;
+        dropCommitted = false;
+        card.classList.add("is-dragging");
+
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", draggedTaskId);
+      });
+
+      board.addEventListener("dragover", (event) => {
+        const column = event.target.closest(".kanban-column");
+        if (!column || !draggedTaskId) return;
+
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        column.classList.add("is-drag-over");
+
+        const list = column.querySelector(".task-list");
+        const targetCard = event.target.closest(".task-card");
+
+        if (!targetCard || targetCard.dataset.taskId === draggedTaskId) {
+          if (!targetCard) list.append(document.querySelector(`[data-task-id="${CSS.escape(draggedTaskId)}"]`));
+          return;
+        }
+
+        const draggedCard = document.querySelector(`[data-task-id="${CSS.escape(draggedTaskId)}"]`);
+        if (!draggedCard) return;
+
+        const bounds = targetCard.getBoundingClientRect();
+        const insertAfter = event.clientY > bounds.top + bounds.height / 2;
+        list.insertBefore(draggedCard, insertAfter ? targetCard.nextSibling : targetCard);
+      });
+
+      board.addEventListener("dragleave", (event) => {
+        const column = event.target.closest(".kanban-column");
+        if (column && !column.contains(event.relatedTarget)) {
+          column.classList.remove("is-drag-over");
+        }
+      });
+
+      board.addEventListener("drop", (event) => {
+        const column = event.target.closest(".kanban-column");
+        if (!column || !draggedTaskId) return;
+
+        event.preventDefault();
+        dropCommitted = true;
+
+        const tasksById = new Map(tasks.map((task) => [task.id, task]));
+        const updatedTasks = [];
+
+        for (const status of statuses) {
+          const list = board.querySelector(`[data-list="${status}"]`);
+          for (const card of list.querySelectorAll(".task-card")) {
+            const task = tasksById.get(card.dataset.taskId);
+            if (task) {
+              updatedTasks.push({ ...task, status });
+            }
+          }
+        }
+
+        tasks = updatedTasks;
+        saveTasks();
+        render();
+      });
+
+      board.addEventListener("dragend", () => {
+        draggedTaskId = null;
+        board.querySelectorAll(".is-drag-over").forEach((column) => {
+          column.classList.remove("is-drag-over");
+        });
+
+        if (!dropCommitted) render();
+      });
+
+      // Modal
+      document.querySelector("#add-task-button").addEventListener("click", () => {
+        dialog.showModal();
+        titleInput.focus();
+      });
+
+      document.querySelector("#cancel-button").addEventListener("click", () => {
+        dialog.close();
+      });
+
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) {
+          dialog.close();
+        }
+      });
+
+      dialog.addEventListener("close", () => {
+        form.reset();
+      });
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        const title = titleInput.value.trim();
+        if (!title) {
+          titleInput.setCustomValidity("Informe um título para a tarefa.");
+          titleInput.reportValidity();
+          titleInput.addEventListener("input", () => titleInput.setCustomValidity(""), { once: true });
+          return;
+        }
+
+        createTask(title, descriptionInput.value.trim());
+        dialog.close();
+      });
+
+      loadTasks();
+      render();
+    })();
+  </script>
+</body>
+</html>
+```
